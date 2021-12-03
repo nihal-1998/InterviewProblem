@@ -1,0 +1,185 @@
+  <!DOCTYPE html>
+  <html>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <script src="https://code.jscharting.com/2.9.0/jscharting.js"></script>
+
+  <script src='https://cdn.plot.ly/plotly-2.6.3.min.js'> </script>
+  <script src="js/index.js"></script>
+  <script>
+
+    function setData()
+    {
+
+      var stageIn = document.getElementById("stageInput").value;
+      var itemIn = document.getElementById("itemInput").value;
+      var percentageIn = document.getElementById("percentageInput").value;
+      var entry = {
+        stage: stageIn,
+        item: itemIn,
+        percentage: percentageIn
+      };
+      fetch("/SetData", {
+        method: "POST",
+        cache: "no-cache",
+        body: JSON.stringify(entry),
+        headers: new Headers({
+          "content-type": "application/json"
+        })
+      });
+      getData();   
+
+    }
+
+
+    function getData()
+    {
+      fetch("/GetData", {
+        method: "GET",
+        cache: "no-cache",
+        headers: new Headers({
+          "content-type": "application/json"
+        })
+      })
+      .then(function (response) {
+        if (response.status !== 200) {
+          console.log(`Looks like there was a problem. Status code: ${response.status}`);
+          return;
+        }
+        response.json().then(function (data) {
+          console.log(data);
+          var checkTable = document.getElementsByTagName('table');
+
+          if(checkTable.length !=0){
+           document.getElementById("tbid").innerHTML = '';
+           document.getElementById("tbid").remove();
+         }
+         var table = document.createElement('table');
+         table.setAttribute("id", "tbid");
+         for (var i = 0; i <  Object.keys(data.fullData).length; i++){
+           var tr = document.createElement('tr');   
+
+           var td1 = document.createElement('td');
+           var td2 = document.createElement('td');
+           var td3 = document.createElement('td');
+
+           var text1 = document.createTextNode(data.fullData [i][1]);
+           var text2 = document.createTextNode(data.fullData [i][2]);
+           var text3 = document.createTextNode(data.fullData [i][3]);
+
+           td1.appendChild(text1);
+           td2.appendChild(text2);
+           td3.appendChild(text3);
+
+           tr.appendChild(td1);
+           tr.appendChild(td2);
+           tr.appendChild(td3);
+
+           table.appendChild(tr);
+         }
+         document.body.appendChild(table);
+         averageThreatHunting = 0;
+         var tableToObj = function( table ) {
+          var trs = table.rows,
+          trl = trs.length,
+          i = 0,
+          j = 0,
+          keys = [],
+          obj, ret = [];
+
+          for (; i < trl; i++) {
+            if (i == 0) {
+              for (; j < trs[i].children.length; j++) {
+                keys.push('y');
+                keys.push('x');
+              }
+
+            } else {
+              obj = {};
+              for (j = 0; j < trs[i].children.length; j++) {
+                obj[keys[j]] = trs[i].children[j].innerHTML;
+                if(j==2)
+                {
+                  //averageThreatHunting = averageThreatHunting+parseInt(trs[i].children[j].innerHTML);
+                }
+              }
+              ret.push(obj);
+            }
+          }
+
+          return ret;
+        };
+
+        var gbToGrapth = [];  
+        for(i = 0 ; i<Object.keys(data.gbData).length;i++)
+        {
+          gbToGrapth.push(data.gbData[i]);
+        } 
+        var ItemData = [];  
+        for(i = 0 ; i<Object.keys(data.fullData).length;i++)
+        {
+          ItemData.push(data.fullData[i]);
+          averageThreatHunting = averageThreatHunting+ parseInt(data.fullData[i].y)
+        } 
+        chartpoints = tableToObj(document.getElementsByTagName('table')[0]);
+
+        JSC.Chart('gbchartDiv', {
+         type: 'vertical column',
+         series: [
+         {
+           points:gbToGrapth
+
+         }
+         ]
+       });
+
+        JSC.Chart('chartDiv', {
+         type: 'horizontal column',
+         series: [
+         {
+           points:ItemData
+
+         }
+         ]
+       });
+
+        var data = [
+        {
+          domain: { x: [0, 1], y: [0, 1] },
+          value: averageThreatHunting / Object.keys(data.fullData).length,
+          title: { text: "ThreatHunting" },
+          type: "indicator",
+          mode: "gauge+number"
+        }
+        ];
+
+        var layout = { width: 600, height: 500, margin: { t: 0, b: 0 } };
+        Plotly.newPlot('spdChart', data, layout);
+        document.getElementById("tbid").remove();
+        console.log(data);
+      });
+      })
+      .catch(function (error) {
+        console.log("Fetch error: " + error);
+      });
+    }     
+
+
+  </script>
+  <body>
+   <p>Stage <input id="stageInput" type = "text" name = "stage" /></p>
+   <p>Iteam <input  id = "itemInput" type = "text" name = "iteam" /></p>
+   <p>Percentage <input id="percentageInput" type = "integer" name = "percentage" /></p>
+   <p><input type = "submit" value = "Submit" onclick="setData()" /></p>
+   <p><input type = "submit" value = "ShowData" onclick="getData()" /></p>
+   <div> 
+
+   </div>
+
+   <div id="chartDiv" style="width:500px; height:300px;"></div>
+
+   <div id="gbchartDiv" style="width:500px; height:300px;"></div>
+
+   <div id="spdChart"> </div>
+ </body>
+ </html>
